@@ -1,0 +1,232 @@
+```html
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KRONIX Timer</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0b1020;
+    color: white;
+    font-family: Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#screen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    touch-action: none;
+    cursor: pointer;
+    background: #0b1020;
+}
+
+#logo {
+    position: absolute;
+    top: 30px;
+    font-size: 28px;
+    letter-spacing: 8px;
+    font-weight: bold;
+    color: #60a5fa;
+}
+
+#timer {
+    font-size: clamp(65px, 15vw, 140px);
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+#status {
+    margin-top: 25px;
+    font-size: clamp(20px, 4vw, 30px);
+    font-weight: bold;
+}
+
+#hint {
+    margin-top: 12px;
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+#screen.holding {
+    background: #594600;
+}
+
+#screen.running {
+    background: #064e3b;
+}
+
+#screen.stopped {
+    background: #172554;
+}
+
+#screen.holding #status {
+    color: #fde047;
+}
+
+#screen.running #status {
+    color: #4ade80;
+}
+
+#screen.stopped #status {
+    color: #93c5fd;
+}
+</style>
+</head>
+
+<body>
+
+<div id="screen">
+    <div id="logo">KRONIX</div>
+    <div id="timer">0.00</div>
+    <div id="status">BEREIT?</div>
+    <div id="hint">Gedrückt halten und loslassen</div>
+</div>
+
+<script>
+const screen = document.getElementById("screen");
+const timer = document.getElementById("timer");
+const statusText = document.getElementById("status");
+const hint = document.getElementById("hint");
+
+let state = "ready";
+let startTime = 0;
+let frame = null;
+let activePointer = null;
+
+function setState(next, title, message) {
+    state = next;
+    screen.className = next === "ready" ? "" : next;
+    statusText.textContent = title;
+    hint.textContent = message;
+}
+
+function resetTimer() {
+    cancelAnimationFrame(frame);
+    timer.textContent = "0.00";
+    startTime = 0;
+    activePointer = null;
+
+    setState(
+        "ready",
+        "BEREIT?",
+        "Gedrückt halten und loslassen"
+    );
+}
+
+function updateTimer() {
+    if (state !== "running") return;
+
+    timer.textContent =
+        ((performance.now() - startTime) / 1000).toFixed(2);
+
+    frame = requestAnimationFrame(updateTimer);
+}
+
+function startTimer() {
+    startTime = performance.now();
+
+    setState(
+        "running",
+        "LÄUFT!",
+        "Klicken oder tippen zum Stoppen"
+    );
+
+    updateTimer();
+}
+
+function stopTimer() {
+    cancelAnimationFrame(frame);
+
+    timer.textContent =
+        ((performance.now() - startTime) / 1000).toFixed(2);
+
+    setState(
+        "stopped",
+        "GESTOPPT!",
+        "Noch einmal klicken für Reset"
+    );
+}
+
+screen.addEventListener("pointerdown", event => {
+    // Am PC nur die linke Maustaste.
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    event.preventDefault();
+
+    if (state === "running") {
+        stopTimer();
+        return;
+    }
+
+    if (state === "stopped") {
+        resetTimer();
+        return;
+    }
+
+    if (state === "ready") {
+        activePointer = event.pointerId;
+
+        try {
+            screen.setPointerCapture(event.pointerId);
+        } catch (error) {}
+
+        setState(
+            "holding",
+            "HALTEN ...",
+            "Beim Loslassen startet der Timer!"
+        );
+    }
+});
+
+screen.addEventListener("pointerup", event => {
+    if (event.pointerId !== activePointer) return;
+    if (state !== "holding") return;
+
+    activePointer = null;
+    startTimer();
+});
+
+screen.addEventListener("pointercancel", () => {
+    if (state === "holding") {
+        activePointer = null;
+
+        setState(
+            "ready",
+            "BEREIT?",
+            "Gedrückt halten und loslassen"
+        );
+    }
+});
+
+// Verhindert das Browser-Kontextmenü.
+document.addEventListener("contextmenu", event => {
+    event.preventDefault();
+});
+
+// Verhindert Textauswahl.
+document.addEventListener("selectstart", event => {
+    event.preventDefault();
+});
+</script>
+
+</body>
+</html>
+```
